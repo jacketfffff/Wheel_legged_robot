@@ -114,7 +114,6 @@ void NaviSerialManager::receive()
             {
                 memset(read_buffer,0,BUFFER_SIZE);
                 read_used_bytes=0;
-                司法的发送
             }
         }
         //Warning, ignore some data when the STM32 send wrong many times
