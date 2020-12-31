@@ -1,0 +1,102 @@
+<robot name="wheel_foot_robot">
+    <material name="gray">
+    <color rgba="0.2 0.2 0.2 1" />
+    </material>
+   
+    <link name="base_footprint">
+        <visual>
+			<geometry>
+				<box size="0.001 0.001 0.001"/>
+			</geometry>
+			<origin rpy="0 0 0" xyz="0 0 0"/>
+		</visual>
+	</link>
+	
+    <link name="base_link"/>
+    
+    <link name="W1_Link"/>
+    
+    <link name="W2_Link"/>
+    
+    <link name="W3_Link"/>
+    
+    <link name="W4_Link"/>
+    
+    <link name="velodyne">
+     <visual>
+      <origin xyz="0.0 0.0 0.0"/>    
+      <geometry>
+        <cylinder length="0.07" radius="0.05" />
+      </geometry>
+      <material name="gray" />
+     </visual>
+    </link>
+  
+    <link name="imu_link">
+     <visual>
+      <origin xyz="0.0 0.0 0.0" />
+      <geometry>
+        <box size="0.04 0.02 0.01" />
+      </geometry>
+      <material name="orange" />
+     </visual>
+    </link>
+    
+    <joint name="base_footprint_joint" type="fixed">
+		<parent link="base_footprint" />
+		<child link="base_link" />
+		<origin xyz="0 0 0" />
+	</joint>
+    
+    <joint name="D1_joint" type="continuous">
+      <origin
+        xyz="0.108515172687904 0.1105 -0.485279110277677"
+        rpy="1.78729472928228 0 1.5707963267949" />
+      <parent link="base_link" />
+      <child link="W1_Link" />
+      <axis xyz="1 0 0" />
+    </joint>
+    
+    <joint name="D2_joint" type="continuous">
+      <origin
+        xyz="-0.124380455219462 0.116999999999997 -0.515705341337862"
+        rpy="1.57079632679489 1.41990659693396 3.14159265358979" />
+      <parent link="base_link" />
+      <child link="W2_Link" />
+      <axis xyz="0 0 1" />
+    </joint>
+    
+    <joint name="D3_joint" type="continuous">
+      <origin
+        xyz="0.108515172687904 -0.110499999999997 -0.485279110277676"
+        rpy="-1.5707963267949 0 -1.5707963267949" />
+      <parent link="base_link" />
+      <child link="W3_Link" />
+      <axis xyz="-1 0 0" />
+    </joint>
+    
+    <joint name="D4_joint" type="continuous">
+      <origin
+        xyz="-0.124380455219462 -0.117 -0.515705341337862"
+        rpy="1.57079632679491 1.41990659693396 -3.14159265358978" />
+      <parent link="base_link" />
+      <child link="W4_Link" />
+      <axis xyz="0 0 1" />
+    </joint>
+
+   <joint name="joint5" type="fixed">
+     <origin
+      xyz="0 0 0.3 "
+      rpy="0 0 0" />
+     <parent
+      link="base_link" />
+     <child
+      link="imu_link" />
+   </joint> 
+   
+   <joint name="velodyne_joint" type="fixed">
+     <parent link="base_link" />
+     <child link="velodyne" />
+     <origin xyz="0 0 0" rpy="0 0 0" />
+   </joint>
+</robot>

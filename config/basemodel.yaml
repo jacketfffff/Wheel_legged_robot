@@ -1,0 +1,7 @@
+#mm
+WheelDiameter: 135.0000
+WheelBase: 260.0000
+EncoderToDistance: 180.000000
+#m
+WheelCenterXOffset: 0.11
+WheelCenterYOffset: 0.0

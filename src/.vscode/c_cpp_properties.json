@@ -1,0 +1,26 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/xcy/catkin_simulator/devel/include/**",
+        "/home/xcy/catkin_ws/devel/include/**",
+        "/home/xcy/cartographer_ws/install_isolated/include/**",
+        "/opt/ros/kinetic/include/**",
+        "/home/xcy/catkin_simulator/src/basecontrol/include/**",
+        "/home/xcy/catkin_ws/src/joyteleop/include/**",
+        "/home/xcy/catkin_ws/src/LeGO-LOAM/LeGO-LOAM/include/**",
+        "/home/xcy/catkin_ws/src/LIO-SAM/include/**",
+        "/home/xcy/catkin_ws/src/loam_velodyne/include/**",
+        "/home/xcy/catkin_ws/src/velodyne/velodyne_driver/include/**",
+        "/home/xcy/catkin_ws/src/velodyne/velodyne_laserscan/include/**",
+        "/home/xcy/catkin_ws/src/velodyne/velodyne_pointcloud/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ]
+}
