@@ -116,7 +116,7 @@ int main(int argc,char* argv[])
     std::string map_frame,base_footprint_frame,file_name;
     const std::string parameter_addr{ros::package::getPath("basecontrol")+"/config/basemodel.yaml"};
     double max_linear_velocity, max_angular_velocity;
-    std::string base_foot_print,odom_frame,serial_addr;
+    std::string base_foot_print,odom_frame,serial_addr,serial_addr1,serial_addr2;
     bool publish_tf;
     
     nh_.param<std::string>("map_frame",map_frame,"map");
@@ -127,11 +127,12 @@ int main(int argc,char* argv[])
     nh_.param("base_foot_print", base_foot_print, (std::string)"base_link");
     nh_.param("odom_frame", odom_frame, (std::string)"odom");
     nh_.param("serial_addr", serial_addr, (std::string)"/dev/ttyUSB1");
-
+    nh_.param("serial_addr1", serial_addr1, (std::string)"/dev/ttyUSB0");
+    nh_.param("serial_addr2", serial_addr2, (std::string)"/dev/ttyUSB0");
     
     JoyTeleop joyTeleop( "/joy",true,0.25,0.4 );
 
-    BaseController baseController(serial_addr, B115200, base_foot_print, odom_frame, publish_tf);
+    BaseController baseController(serial_addr, B115200, base_foot_print, odom_frame, serial_addr1,serial_addr2,publish_tf);
     baseController.setBaseModel(parameter_addr);
 
     GoalSaver goalSaver(map_frame,base_footprint_frame,file_name);

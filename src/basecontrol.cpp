@@ -7,12 +7,21 @@
 using namespace JOYTELEOP;
 using namespace cv;
 
-BaseController::BaseController(std::string serial_addr, unsigned int baudrate, std::string base_foot_print, std::string odom_frame,bool publish_tf)
+BaseController::BaseController(std::string serial_addr, unsigned int baudrate, std::string base_foot_print, std::string odom_frame,std::string serial_addr1,std::string serial_addr2,bool publish_tf)
 {   
     
-    serialManager = new NaviSerialManager(serial_addr, baudrate);
-    if(serialManager -> openSerial())
-    {
+    serialManager = new NaviSerialManager(serial_addr, baudrate,8);
+    //if(serialManager -> openSerial())
+    //{
+        LeftForceSensor = new NaviSerialManager(serial_addr1,baudrate,12);
+        LeftForceSensor -> registerAutoReadThread(TIMER_SPAN_RATE_);
+
+        RightForceSensor = new NaviSerialManager(serial_addr2,baudrate,12);
+        LeftForceSensor -> registerAutoReadThread(TIMER_SPAN_RATE_);
+
+        left_forcesensor_pub = nh_.advertise<std_msgs::Float64MultiArray>("/left_forcesensor",100);
+        right_forcesensor_pub = nh_.advertise<std_msgs::Float64MultiArray>("/right_forcesensor",100); 
+
         serialManager -> registerAutoReadThread(TIMER_SPAN_RATE_);
 
         wheel_status_pub = nh_.advertise<basecontrol::WheelStatus>("/wheel_status", 100);
@@ -24,24 +33,229 @@ BaseController::BaseController(std::string serial_addr, unsigned int baudrate, s
 		multi_imu = nh_.subscribe("/robot_Pitch", 100, &BaseController::MultiImuCallback, this);
         //init_send_msgs();
 
-        timer_ = nh_.createTimer(ros::Duration(1.0 / TIMER_SPAN_RATE_),&BaseController::timerCallback,this);
-        timer_.start();
+        send_timer_ = nh_.createTimer(ros::Duration(1.0 / TIMER_SPAN_RATE_),&BaseController::sendtimerCallback,this);
+        send_timer_.start();
+        read_timer_ = nh_.createTimer(ros::Duration(1.0/TIMER_SPAN_RATE_),&BaseController::readtimerCallback,this);
+        read_timer_.start();
+        left_forcesensor_timer_ =  nh_.createTimer(ros::Duration(2/TIMER_SPAN_RATE_),&BaseController::leftforcesensorCallback,this);
+        left_forcesensor_timer_.start();
+        right_forcesensor_timer_ = nh_.createTimer(ros::Duration(2/TIMER_SPAN_RATE_),&BaseController::rightforcesensorCallback,this);
+        right_forcesensor_timer_.start();
         //odom_publish_timer_ = nh_.createTimer(ros::Duration(1.0/ODOM_TIMER_SPAN_RATE_), &BaseController::odom_publish_timer_callback, this);
         //odom_publish_timer_.start();
         ROS_INFO_STREAM("BASE READY");
-    }
-    else
-    ROS_ERROR_STREAM("Can't open "<<"SERIAL "<<serial_addr<<std::endl);
-}
+   // }
+    //else
+    //ROS_ERROR_STREAM("Can't open "<<"SERIAL "<<serial_addr<<std::endl);
+}       
 
 BaseController::~BaseController()
 {
 
     delete serialManager;
 }
-
-
-
+// leftforcesensorcallback  左腿力传感器数据处理    
+void BaseController::leftforcesensorCallback( const ros::TimerEvent & e)
+{
+   
+    NaviSerialManager::ReadResult self_results{LeftForceSensor->getReadResult()};
+    if(self_results.read_bytes >= 12)
+    {
+        for (int i=0; i<self_results.read_bytes; i+= 12)
+        {
+            memcpy(leftforcesensor_, &self_results.read_result[i], 12);
+             if (leftforcesensor_[0] == 0x49 && leftforcesensor_[10] == 0x0D && leftforcesensor_[11] == 0x0A)
+             {
+                 int Fx,Fy,Fz,Mx,My,Mz;
+                if(leftforcesensor_[1]&0x80)
+                {
+                    Fx=(((~leftforcesensor_[1])&0x7F)<<4)+((~leftforcesensor_[2])>>4)+1;
+                    Fx=-Fx;	
+                }
+                else
+                 {
+                    Fx=((leftforcesensor_[1]&0x7F)<<4)+(leftforcesensor_[2]>>4);
+                 } 
+                if(leftforcesensor_[2]&0x08)
+                {
+                    Fy=(((~leftforcesensor_[2])&0x07)<<8)+(~leftforcesensor_[3])+1;
+                    Fy=-Fy;	
+                }
+                else
+                {
+                    Fy=((leftforcesensor_[2]&0x07)<<8)+leftforcesensor_[3];
+                }	
+                if(leftforcesensor_[4]&0x80)
+                {
+                    Fz=(((~leftforcesensor_[4])&0x7F)<<4)+((~leftforcesensor_[5])>>4)+1;
+                    Fz=-Fz;	
+                }
+                else
+                {
+                    Fz=((leftforcesensor_[4]&0x7F)<<4)+(leftforcesensor_[5]>>4);
+                } 
+                if(leftforcesensor_[5]&0x08)
+                {
+                    Mx=(((~leftforcesensor_[5])&0x07)<<8)+(~leftforcesensor_[6])+1;
+                    Mx=-Mx;	
+                }
+                else
+                {
+                    Mx=((leftforcesensor_[5]&0x07)<<8)+leftforcesensor_[6];
+                }
+                if(leftforcesensor_[7]&0x80)
+                { 
+                    My=(((~leftforcesensor_[7])&0x7F)<<4)+((~leftforcesensor_[8])>>4)+1;
+                    My=-My;	
+                }
+                else
+                {
+                    My=((leftforcesensor_[7]&0x7F)<<4)+(leftforcesensor_[8]>>4);
+                }
+                if(leftforcesensor_[8]&0x08)
+                {
+                    Mz=(((~leftforcesensor_[8])&0x07)<<8)+(~leftforcesensor_[9]);
+                    Mz=-Mz;	
+                }
+                else
+                {
+                    Mz=((leftforcesensor_[8]&0x07)<<8)+leftforcesensor_[9];
+                }
+                /* Fx = ((leftforcesensor_[1] & 0x7F) << 4) + (leftforcesensor_[2] >> 4);
+                 Fy = ((leftforcesensor_[2] & 0x07) << 8) + leftforcesensor_[3];
+                 Fz = ((leftforcesensor_[4] & 0x7F) << 4) + (leftforcesensor_[5] >> 4);
+                 Mx = ((leftforcesensor_[5] & 0x07) << 8) + leftforcesensor_[6];
+                 My = ((leftforcesensor_[7] & 0x7F) << 4) + (leftforcesensor_[8] >> 4);
+                 Mz = ((leftforcesensor_[8] & 0x07) << 8) + leftforcesensor_[9];
+                 if (leftforcesensor_[1] & 0x80)
+                     Fx = -Fx;
+                 if (leftforcesensor_[2] & 0x08)
+                     Fy = -Fy;
+                 if (leftforcesensor_[4] & 0x80)
+                     Fz = -Fz;
+                 if (leftforcesensor_[5] & 0x08)
+                     Mx = -Mx;
+                 if (leftforcesensor_[7] & 0x80)
+                     My = -My;
+                 if (leftforcesensor_[8] & 0x08)
+                     Mz = -Mz;*/
+                 Leftforcesensor_[0] = FORCE_TRANSFORM_ * Fx;
+                 Leftforcesensor_[1] = FORCE_TRANSFORM_ * Fy; 
+                 Leftforcesensor_[2] = FORCE_TRANSFORM_ * Fz;
+                 Leftforcesensor_[3] = MOMENT_TRANSFORM_ * Mx;
+                 Leftforcesensor_[4] = MOMENT_TRANSFORM_ * My;
+                 Leftforcesensor_[5] = MOMENT_TRANSFORM_ * Mz;
+                 std_msgs::Float64MultiArray Leftforcesensor;
+                 memcpy(Leftforcesensor.data.data(), &Leftforcesensor_[0], 6*sizeof(double));
+                 left_forcesensor_pub.publish(Leftforcesensor);
+             }
+             else
+             ROS_WARN_STREAM("LEFT_FORCESNESOR DATA ERROR");
+        }
+    }
+}
+// rightforcesensorcallback 右腿力传感器数据处理
+void BaseController::rightforcesensorCallback( const ros::TimerEvent & e )
+{   
+    
+    NaviSerialManager::ReadResult self_results{RightForceSensor->getReadResult()};
+    if(self_results.read_bytes >= 12)
+    {
+        for (int i=0; i<self_results.read_bytes; i+= 12)
+        {
+            memcpy(rightforcesensor_, &self_results.read_result[i], 12);
+             if (rightforcesensor_[0] == 0x49 && rightforcesensor_[10] == 0x0D && rightforcesensor_[11] == 0x0A)
+             {
+                 int Fx,Fy,Fz,Mx,My,Mz;
+                if(rightforcesensor_[1]&0x80)
+                {
+                    Fx=(((~rightforcesensor_[1])&0x7F)<<4)+((~rightforcesensor_[2])>>4)+1;
+                    Fx=-Fx;	
+                }
+                else
+                 {
+                    Fx=((rightforcesensor_[1]&0x7F)<<4)+(rightforcesensor_[2]>>4);
+                 } 
+                if(rightforcesensor_[2]&0x08)
+                {
+                    Fy=(((~rightforcesensor_[2])&0x07)<<8)+(~rightforcesensor_[3])+1;
+                    Fy=-Fy;	
+                }
+                else
+                {
+                    Fy=((rightforcesensor_[2]&0x07)<<8)+rightforcesensor_[3];
+                }	
+                if(rightforcesensor_[4]&0x80)
+                {
+                    Fz=(((~rightforcesensor_[4])&0x7F)<<4)+((~rightforcesensor_[5])>>4)+1;
+                    Fz=-Fz;	
+                }
+                else
+                {
+                    Fz=((rightforcesensor_[4]&0x7F)<<4)+(rightforcesensor_[5]>>4);
+                } 
+                if(rightforcesensor_[5]&0x08)
+                {
+                    Mx=(((~rightforcesensor_[5])&0x07)<<8)+(~rightforcesensor_[6])+1;
+                    Mx=-Mx;	
+                }
+                else
+                {
+                    Mx=((rightforcesensor_[5]&0x07)<<8)+rightforcesensor_[6];
+                }
+                if(rightforcesensor_[7]&0x80)
+                { 
+                    My=(((~rightforcesensor_[7])&0x7F)<<4)+((~rightforcesensor_[8])>>4)+1;
+                    My=-My;	
+                }
+                else
+                {
+                    My=((rightforcesensor_[7]&0x7F)<<4)+(rightforcesensor_[8]>>4);
+                }
+                if(rightforcesensor_[8]&0x08)
+                {
+                    Mz=(((~rightforcesensor_[8])&0x07)<<8)+(~rightforcesensor_[9]);
+                    Mz=-Mz;	
+                }
+                else
+                {
+                    Mz=((rightforcesensor_[8]&0x07)<<8)+rightforcesensor_[9];
+                }
+                 /*int Fx,Fy,Fz,Mx,My,Mz;
+                 Fx = ((rightforcesensor_[1] & 0x7F) << 4) + (rightforcesensor_[2] >> 4);
+                 Fy = ((rightforcesensor_[2] & 0x07) << 8) + rightforcesensor_[3];
+                 Fz = ((rightforcesensor_[4] & 0x7F) << 4) + (rightforcesensor_[5] >> 4);
+                 Mx = ((rightforcesensor_[5] & 0x07) << 8) + rightforcesensor_[6];
+                 My = ((rightforcesensor_[7] & 0x7F) << 4) + (rightforcesensor_[8] >> 4);
+                 Mz = ((rightforcesensor_[8] & 0x07) << 8) + rightforcesensor_[9];
+                 if (rightforcesensor_[1] & 0x80)
+                     Fx = -Fx;
+                 if (rightforcesensor_[2] & 0x08)
+                     Fy = -Fy;
+                 if (rightforcesensor_[4] & 0x80)
+                     Fz = -Fz;
+                 if (rightforcesensor_[5] & 0x08)
+                     Mx = -Mx;
+                 if (rightforcesensor_[7] & 0x80)
+                     My = -My;
+                 if (rightforcesensor_[8] & 0x08)
+                     Mz = -Mz;*/
+                 Rightforcesensor_[0] = FORCE_TRANSFORM_ * Fx;
+                 Rightforcesensor_[1] = FORCE_TRANSFORM_ * Fy; 
+                 Rightforcesensor_[2] = FORCE_TRANSFORM_ * Fz;
+                 Rightforcesensor_[3] = MOMENT_TRANSFORM_ * Mx;
+                 Rightforcesensor_[4] = MOMENT_TRANSFORM_ * My;
+                 Rightforcesensor_[5] = MOMENT_TRANSFORM_ * Mz;
+                 std_msgs::Float64MultiArray Rightforcesensor;
+                memcpy(Rightforcesensor.data.data(), &Rightforcesensor_[0], 6*sizeof(double));
+                right_forcesensor_pub.publish(Rightforcesensor);
+             }
+             else
+             ROS_WARN_STREAM("RIGHT_FORCESNESOR DATA ERROR");
+        }
+    }
+}
+// droppreventioncallback 防跌落
 void BaseController::DropPreventionCallback(const sensor_msgs::Image & image)
 {
 	drop_prevention_time_3 = ros::Time::now();    
@@ -81,7 +295,7 @@ void BaseController::DropPreventionCallback(const sensor_msgs::Image & image)
 			std::cout<<"stop"<<std::endl;
         } 
 }
-
+//手柄速度处理
 void BaseController::joy_velCallback(const geometry_msgs::TwistConstPtr &msg)
 {
     if(cmd_vel_received_)
@@ -123,7 +337,7 @@ void BaseController::joy_velCallback(const geometry_msgs::TwistConstPtr &msg)
     //cmd_vel_received_ = linear_velocity!=0||angular_velocity!=0 ;
     //ROS_INFO_STREAM("GET INFORMATION FROM JOY AND SEND VELOCITY");
 }
-
+// 导航速度处理
 void BaseController::cmd_velCallback(const geometry_msgs::TwistConstPtr &msg)
 {
     cmd_vel_watch_ = ros::Time::now();   
@@ -155,7 +369,7 @@ void BaseController::cmd_velCallback(const geometry_msgs::TwistConstPtr &msg)
     //sendVelocity(user_cmd_vel_);
     velocity_mutex_.unlock();
 }
-
+//下蹲 暂时不用
 void BaseController::SquatController(double rate)
 {
     //double depth,double start_time,double step,double distance,double vel,double rate
@@ -169,6 +383,7 @@ void BaseController::SquatController(double rate)
     thread_ptr_->detach();
     
 }
+//下蹲线程 不用
 void BaseController::SquatThread(double rate)
 {
     try
@@ -205,7 +420,7 @@ void BaseController::SquatThread(double rate)
     }
     
 }
-
+//下蹲规划 不用
 void BaseController::squat_planning()
 {
     std::cout << "squat_planning" << std::endl;
@@ -383,6 +598,7 @@ void BaseController::squat_planning()
 		}
 	}
 }
+//关节控制发送 不用
 void BaseController::send_joint_control(int i)
 {
     BaseController::Joint_control joint_control_;
@@ -445,12 +661,12 @@ void BaseController::send_joint_control(int i)
     //std::cout << "control_vel" << control_vel << std::endl;
     //printf("%s",control_vel);
 }
-
+// get_pos 校验 暂时不用
 void BaseController::init_send_msgs()
 {
     //get_pos[7]=xor_msgs(get_pos);
 }
-
+//校验
 unsigned char BaseController::xor_msgs(unsigned char *msg)
 {
     unsigned char check=msg[1];
@@ -458,7 +674,7 @@ unsigned char BaseController::xor_msgs(unsigned char *msg)
         check=check ^ msg[i];
     return check;
 }
-
+// 发送轮子期望速度
 void BaseController::sendVelocity()
 {
     velocity_mutex_.lock();
@@ -468,8 +684,7 @@ void BaseController::sendVelocity()
    serialManager -> send(wheel_vel, COMMAND_SIZE);
    //std::cout << "sendVelocity" << std::endl;
 }
-
-
+//读取机器人底盘模型
 void BaseController::setBaseModel(const std::string & param_addr)
 {
     global_x -= BASE_MODEL_.Wheel_Center_X_Offset;
@@ -490,83 +705,82 @@ void BaseController::setBaseModel(const std::string & param_addr)
     global_x+=BASE_MODEL_.Wheel_Center_X_Offset;
     global_y+=BASE_MODEL_.Wheel_Center_Y_Offset;
 }
-
-void BaseController::timerCallback(const ros::TimerEvent &e)
+//下位机数据发送
+void BaseController::sendtimerCallback(const ros::TimerEvent &e)
 {
     static int encoder_counter=1;
 
     //sendcommand
-	if(encoder_counter%2 == 1)
-    	sendCommand();
-	if(encoder_counter%4==2)   //sendVelocity 30hz
+	if(encoder_counter%2 == 1)//100hz
+    	//sendCommand();
+        serialManager -> send(get_JointEncoder,COMMAND_SIZE);
+        LeftForceSensor -> send(get_force,4);
+        RightForceSensor -> send(get_force,4);
+	if(encoder_counter%4==0)   //50hz
+        serialManager -> send(get_pos,COMMAND_SIZE);
+    if(encoder_counter % 8 ==2) //25hz
+        sendCommand();
+    if(encoder_counter % 8 == 6)//25hz
         sendVelocity();
-	if(encoder_counter == 236&&send_imu_)
+	/*if(encoder_counter == 236&&send_imu_)
     {
 		//15 hz
 	    imu_mutex_.lock();
         serialManager -> send(imu_Pitch,10);
         imu_mutex_.unlock();
-    }
+    }*/
 	encoder_counter++;
 	encoder_counter = encoder_counter == TIMER_SPAN_RATE_*2+1 ? 1 : encoder_counter;
-
-    //keep consistency
-    //if(!serialManager->isSerialAlive())
-    	//ROS_ERROR_STREAM("SERIAL WRONG!!!!!");
-    /*
-    NaviSerialManager::ReadResult self_results{serialManager->getReadResult()};
-
-    encoder_pre = encoder_after;
-    if(self_results.read_bytes>=COMMAND_SIZE)
-    {
-        for(int i=0;i<self_results.read_bytes;i+=COMMAND_SIZE)
+}
+//下位机数据接收
+void BaseController::readtimerCallback(const ros::TimerEvent &e)
+{
+        NaviSerialManager::ReadResult self_results{serialManager->getReadResult()};
+        encoder_pre = encoder_after;
+        if(self_results.read_bytes>=COMMAND_SIZE)
         {
-            memcpy(message_, &self_results.read_result[i], COMMAND_SIZE);
-            /*std::cout<<"receive  ";
-            for(int j=0;j<8;j++)
+            for(int i=0;i<self_results.read_bytes;i+=COMMAND_SIZE)
             {
-                printf("%x ",message_[j]);
+                 memcpy(message_, &self_results.read_result[i], COMMAND_SIZE);
+                 parsingMsg();
             }
-            std::cout<<std::endl<<"---------"<<std::endl;*
-            parsingMsg();
-        }
-        if(right_updated&&left_updated)
-        {
-            ENCODER_.interval=(encoder_after-encoder_pre).toSec();
-            odom_parsing();
-            right_updated=false;
-            left_updated=false;
-        }
-    }
-    else
-        memset(message_, 0, COMMAND_SIZE);
-    //publish the encoder when have.
-    if(ENCODER_.interval!=0)
-    {
-        if(ENCODER_.interval>20.0/TIMER_SPAN_RATE_||ENCODER_.interval<0.0)
-        {
-            if(!ENCODER_.encoderWrong)
-                encoder_stop=ros::Time::now();
-            ENCODER_.encoderWrong=true;
-            ROS_ERROR_STREAM("Encoder once passed 5 frames");
+            if(right_updated&&left_updated)
+            {
+                ENCODER_.interval=(encoder_after-encoder_pre).toSec();
+                odom_parsing();
+                right_updated=false;
+                left_updated=false;
+            }
         }
         else
+        memset(message_, 0, COMMAND_SIZE);
+    //publish the encoder when have.
+        if(ENCODER_.interval!=0)
         {
-            if(ENCODER_.encoderWrong)
+            if(ENCODER_.interval>20.0/TIMER_SPAN_RATE_||ENCODER_.interval<0.0)
             {
-                if((encoder_pre-encoder_stop).toSec()>=1.0)
-                    ENCODER_.encoderWrong=false;
+                if(!ENCODER_.encoderWrong)
+                 encoder_stop=ros::Time::now();
+                ENCODER_.encoderWrong=true;
+                ROS_ERROR_STREAM("Encoder once passed 5 frames");
             }
+            else
+            {   
+                if(ENCODER_.encoderWrong)
+                {
+                    if((encoder_pre-encoder_stop).toSec()>=1.0)
+                        ENCODER_.encoderWrong=false;
+                }
+            }
+            basecontrol::WheelStatus wheelStatus{};
+            wheelStatus.right_encoder=ENCODER_.right_encoder;
+            wheelStatus.left_encoder = ENCODER_.left_encoder;
+            wheelStatus.encoderWrong = ENCODER_.encoderWrong;
+            wheelStatus.interval = ENCODER_.interval;
+            wheel_status_pub.publish(wheelStatus);
         }
-        basecontrol::WheelStatus wheelStatus{};
-        wheelStatus.right_encoder=ENCODER_.right_encoder;
-        wheelStatus.left_encoder = ENCODER_.left_encoder;
-        wheelStatus.encoderWrong = ENCODER_.encoderWrong;
-        wheelStatus.interval = ENCODER_.interval;
-        wheel_status_pub.publish(wheelStatus);
-    }*/
 }
-
+//发送控制指令
 void BaseController::sendCommand( double parameter)
 {
     command_mutex_.lock();
@@ -637,12 +851,14 @@ void BaseController::sendCommand( double parameter)
     user_command_ = Command::DEFAULT;
     command_mutex_.unlock();
 }
+
 void BaseController::passCommand(Command user_command)
 {
     command_mutex_.lock();
     user_command_ = user_command;
     command_mutex_.unlock();
 }
+//码盘解算
 int BaseController::parsingMsg()
 {
     if(0x35!=message_[0])
@@ -750,7 +966,7 @@ int BaseController::parsingMsg()
     }
     return 0;
 }
-
+//里程计计算
 void BaseController::odom_parsing()
 {
     static int right_encoder_pre{ENCODER_.right_encoder},left_encoder_pre{ENCODER_.left_encoder};
@@ -846,7 +1062,7 @@ void BaseController::odom_parsing()
     left_encoder_pre = ENCODER_.left_encoder;
     last_time = ros::Time::now();
 }
-
+//里程计发布
 void BaseController::odom_publish_timer_callback(const ros::TimerEvent &e)
 {
     nav_msgs::Odometry odom;
@@ -888,7 +1104,7 @@ void BaseController::odom_publish_timer_callback(const ros::TimerEvent &e)
     if(publish_tf_)
         broad_caster.sendTransform(odom_trans);
 }
-
+//多IMU数据发送 后期取消
 void BaseController::MultiImuCallback (const std_msgs::Float64MultiArray & robot_Pitch)
 {
 	 tou = robot_Pitch.data[0] * 1000;

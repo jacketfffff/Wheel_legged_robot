@@ -11,20 +11,19 @@ namespace JOYTELEOP
     enum ControlTrigger{
         Default,
         Reset,
-        MoveForward,
-        MoveBack,
-        TurnLeft,
-        TurnRight,
-        Squat,
-        Jump,
-        JointLock,
-        NaviPointSave,
         Init,
-        Stop,
+        ClearReset,
+        Squat,
         Stand,
-        Anklecut,
         Kneecut,
-        Imu
+        KneeLock,
+         Anklecut,
+         AnkleLock,
+        Hipcut,
+        HipLock,
+        Stop,
+        NaviPointSave,
+        Imustart
     };
     class JoyTeleop{
         private:

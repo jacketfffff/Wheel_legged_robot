@@ -47,7 +47,7 @@ int main(int argc, char* argv[])
     //bool drop_prevention{false},control_mode{false}, nav_mode{false},force_change{false};
 
     const std::string parameter_addr{ros::package::getPath("basecontrol")+"/config/basemodel.yaml"};
-    std::string base_foot_print, odom_frame, map_frame, serial_addr;
+    std::string base_foot_print, odom_frame, map_frame, serial_addr,serial_addr1,serial_addr2;
     bool publish_tf;
 
     nh_.param("base_foot_print", base_foot_print,(std::string)"base_link");
@@ -55,11 +55,12 @@ int main(int argc, char* argv[])
     nh_.param("map_frame", map_frame, (std::string)"map");
     nh_.param("publish_tf", publish_tf, (bool)false);
     nh_.param("serial_addr", serial_addr, (std::string)"/dev/ttyUSB0");
-
+    nh_.param("serial_addr1", serial_addr1, (std::string)"/dev/ttyUSB0");
+    nh_.param("serial_addr2", serial_addr2, (std::string)"/dev/ttyUSB0");
     
     //basecontrol
   
-    BaseController baseController(serial_addr,B115200,base_foot_print,odom_frame,publish_tf);
+    BaseController baseController(serial_addr, B115200, base_foot_print, odom_frame, serial_addr1,serial_addr2,publish_tf);
     baseController.setBaseModel(parameter_addr);
     //joy
     double max_linear_velocity, max_angular_velocity;
@@ -88,27 +89,13 @@ int main(int argc, char* argv[])
                 //TODO reset
                 std::cout << "Reset" << std::endl;
                 break;//A
-            case JOYTELEOP::Jump:
-                //TODO jump
-                std::cout << "Jump" << std::endl;
-                break;//B
+
            
             case JOYTELEOP::Squat: 
                 std::cout << "Squat" << std::endl;
                 baseController.SquatController(100);
                 break;//Y
-            case JOYTELEOP::MoveForward: 
-                baseController.sendCommand(baseController.MOVEFORWARD);
-                break;//up
-            case JOYTELEOP::MoveBack:
-                baseController.sendCommand(baseController.MOVEBACK);
-                break;//down
-            case JOYTELEOP::TurnLeft:
-                baseController.sendCommand(baseController.TURNLEFT);
-                break;//left
-            case JOYTELEOP::TurnRight:
-                baseController.sendCommand(baseController.TURNRIGHT);
-                break;//right
+           
         }
         switch (navCore.getMoveBaseActionResult())
         {

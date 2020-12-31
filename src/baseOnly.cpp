@@ -14,16 +14,20 @@ int main(int argc, char** argv)
     const std::string parameter_addr{ros::package::getPath("basecontrol")+"/config/basemodel.yaml"};//添加参数文件
 	int Hz_count = 0;
     double max_linear_velocity, max_angular_velocity;
-    std::string base_foot_print,odom_frame,map_frame,serial_addr;
+    std::string base_foot_print,odom_frame,map_frame,serial_addr,serial_addr1,serial_addr2;
     bool publish_tf;
 
     nh_.param("publish_tf", publish_tf, (bool)false);
     nh_.param("base_foot_print", base_foot_print, (std::string)"base_link");
     nh_.param("odom_frame", odom_frame, (std::string)"odom");
     nh_.param("serial_addr", serial_addr, (std::string)"/dev/ttyUSB0");
+    nh_.param("serial_addr1", serial_addr1, (std::string)"/dev/ttyUSB0");
+    nh_.param("serial_addr2", serial_addr2, (std::string)"/dev/ttyUSB0");
 
     JoyTeleop joyTeleop("/joy",true,0.3,0.6);
-    BaseController baseController(serial_addr, B115200, base_foot_print, odom_frame, publish_tf);
+    BaseController baseController(serial_addr, B115200, base_foot_print, odom_frame, serial_addr1,serial_addr2,publish_tf);
+   
+
     baseController.setBaseModel(parameter_addr);
 
     ros::AsyncSpinner spinner(3);
@@ -62,7 +66,7 @@ int main(int argc, char** argv)
                 std::cout << "Anklecut" << std::endl;
                 baseController.passCommand(baseController.ANKLECUT);
                 break;//RIGHT
-            case Imu:
+            case Imustart:
                 std::cout<<"Imu status changed" <<std::endl;
                 baseController.passCommand(baseController.IMU);
         }

@@ -136,7 +136,7 @@ add_message_files(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include
-#  LIBRARIES basecontrol
+  LIBRARIES basecontrol
   CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs sensor_msgs nav_msgs tf cv_bridge
   DEPENDS YAML EIGEN3 Boost
 )

@@ -6,6 +6,12 @@
 #define LOCK_SIZE 10
 #define RESULT_SIZE COMMAND_SIZE*20
 #define COMMAND_HEAD 0x35
+#define COMMAND_TAIL 0x35
+#define ENCODER_HEAD 0X92
+#define ENCODER_TAIL 0X92
+#define FORCESENSOR_HEAD 0X49
+#define FORCESENSOR_TAIL 0X0A
+
 #define CONTROL_SIZE 44
 
 class NaviSerialManager : public SerialManager{
@@ -19,13 +25,14 @@ private:
     std::queue<ReadResult> read_result_queue{};
     ReadResult read_results_;
     int read_used_bytes{};
+    int command_size;
     bool isAutoThreadRegistered_{};
     std::mutex queue_mutex_{};
     std::tr1::shared_ptr<boost::thread> thread_ptr_;
     void readWorker(int rate);
     int getCommandBeginIndex(int check_begin_index=0);
 public:
-    NaviSerialManager(std::string serial_addr, unsigned int baudrate);
+    NaviSerialManager(std::string serial_addr, unsigned int baudrate, int command_size);
     NaviSerialManager(const SerialManager & serialManager);
     ~NaviSerialManager();
     void registerAutoReadThread(int rate);
