@@ -26,7 +26,7 @@ void NaviSerialManager::readWorker(int rate)
     static ros::Rate loop_rate(rate);
     try
     {
-        boost::this_thread::interruption_enabled();//检测线程是否允许中断
+        boost::this_thread::interruption_enabled();
         while(true)
         {
             //boost::posix_time::ptime startTime = boost::posix_time::microsec_clock::universal_time();

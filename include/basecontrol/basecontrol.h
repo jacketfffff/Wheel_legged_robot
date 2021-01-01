@@ -19,9 +19,10 @@
 #include "tf/transform_broadcaster.h"
 #include "squat_planning/code_generation_active_motor.h"
 #include <valarray>
-
+#include "tf/transform_datatypes.h"
 #include "ros/ros.h"
 #include "sensor_msgs/Image.h"
+#include "sensor_msgs/Imu.h"
 #include "opencv2/opencv.hpp"
 #include <cv_bridge/cv_bridge.h>
 #include "std_msgs/UInt32.h"
@@ -84,8 +85,8 @@ private:
     std::tr1::shared_ptr<boost::thread> thread_ptr_;
 	int tou,tou_1, zuo ,you;
     char wheel_vel[COMMAND_SIZE] = {0x53,0x13,0x10,0x03,0x00,0x00,0x00,0x00};
-    float Leftforcesensor_[6];
-    float Rightforcesensor_[6];
+    double Leftforcesensor_[6];
+    double Rightforcesensor_[6];
     unsigned char joint_init[COMMAND_SIZE] = {0x53,0x10,0x56,0x00,0x00,0x00,0x00,0x00};
     unsigned char joint_reset[COMMAND_SIZE] = {0x53,0x13,0x32,0xFF,0x00,0x00,0x00,0x00};
 
@@ -102,10 +103,6 @@ private:
     unsigned char squat[COMMAND_SIZE] = {0x53,0x13,0x35,0x01,0x00,0x00,0x00,0x00};
     unsigned char stand[COMMAND_SIZE] = {0x53,0x13,0x35,0x02,0x00,0x00,0x00,0x00};
 
-	//unsigned char turn_right[COMMAND_SIZE] = {0x53,0x13,0x10,0x03,0x00,0xdb,0xdb,0x00};	
-	//unsigned char turn_left[COMMAND_SIZE] = {0x53,0x13,0x10,0x03,0x00,0x25,0x25,0x00};
-	//unsigned char move_forward[COMMAND_SIZE] = {0x53,0x13,0x10,0x03,0x00,0xf0,0x10,0x00};
-	//unsigned char move_back[COMMAND_SIZE] = {0x53,0x13,0x10,0x03,0x00,0x10,0xf0,0x00};
 	unsigned char stop_smooth[COMMAND_SIZE] = {0x53,0x13,0x11,0x02,0x00,0x00,0x00,0x00};
     unsigned char get_pos[COMMAND_SIZE] = {0x53,0x13,0x13,0x00,0x00,0x00,0x00,0x34};
     unsigned char get_force[4] = {0x49, 0xAA, 0x0D, 0x0A};
@@ -123,9 +120,11 @@ private:
     const float MOMENT_TRANSFORM_ = 0.0009765625 * 9.8;
     const std::string BASE_FOOT_PRINT_;
     const std::string ODOM_FRAME_;
+    
     Encoder ENCODER_{};
 
-    char message_[COMMAND_SIZE];
+    char message_encoder_[12];
+    char message_odom_[8];
     char leftforcesensor_[12];
     char rightforcesensor_[12];
 
@@ -184,6 +183,7 @@ private:
     void odom_publish_timer_callback(const ros::TimerEvent & e);
     void init_send_msgs();
     int parsingMsg();
+    int parsingEncoder();
     void odom_parsing();
 
     void joy_velCallback(const geometry_msgs::TwistConstPtr &msg);
@@ -216,6 +216,6 @@ public:
     bool ControlMode = false;
     
     void DropPreventionCallback (const sensor_msgs::Image & image);
-	void MultiImuCallback (const std_msgs::Float64MultiArray & robot_Pitch);
+	void MultiImuCallback (const sensor_msgs::Imu & robot_Pitch);
 };
 #endif

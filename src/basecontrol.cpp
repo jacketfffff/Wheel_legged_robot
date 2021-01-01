@@ -14,10 +14,12 @@ BaseController::BaseController(std::string serial_addr, unsigned int baudrate, s
     //if(serialManager -> openSerial())
     //{
         LeftForceSensor = new NaviSerialManager(serial_addr1,baudrate,12);
+        LeftForceSensor -> openSerial();
         LeftForceSensor -> registerAutoReadThread(TIMER_SPAN_RATE_);
 
         RightForceSensor = new NaviSerialManager(serial_addr2,baudrate,12);
-        LeftForceSensor -> registerAutoReadThread(TIMER_SPAN_RATE_);
+        RightForceSensor -> openSerial();
+        RightForceSensor -> registerAutoReadThread(TIMER_SPAN_RATE_);
 
         left_forcesensor_pub = nh_.advertise<std_msgs::Float64MultiArray>("/left_forcesensor",100);
         right_forcesensor_pub = nh_.advertise<std_msgs::Float64MultiArray>("/right_forcesensor",100); 
@@ -35,8 +37,8 @@ BaseController::BaseController(std::string serial_addr, unsigned int baudrate, s
 
         send_timer_ = nh_.createTimer(ros::Duration(1.0 / TIMER_SPAN_RATE_),&BaseController::sendtimerCallback,this);
         send_timer_.start();
-        read_timer_ = nh_.createTimer(ros::Duration(1.0/TIMER_SPAN_RATE_),&BaseController::readtimerCallback,this);
-        read_timer_.start();
+        //read_timer_ = nh_.createTimer(ros::Duration(1.0/TIMER_SPAN_RATE_),&BaseController::readtimerCallback,this);
+        //read_timer_.start();
         left_forcesensor_timer_ =  nh_.createTimer(ros::Duration(2/TIMER_SPAN_RATE_),&BaseController::leftforcesensorCallback,this);
         left_forcesensor_timer_.start();
         right_forcesensor_timer_ = nh_.createTimer(ros::Duration(2/TIMER_SPAN_RATE_),&BaseController::rightforcesensorCallback,this);
@@ -53,11 +55,12 @@ BaseController::~BaseController()
 {
 
     delete serialManager;
+    delete LeftForceSensor;
+    delete RightForceSensor;
 }
 // leftforcesensorcallback  左腿力传感器数据处理    
 void BaseController::leftforcesensorCallback( const ros::TimerEvent & e)
 {
-   
     NaviSerialManager::ReadResult self_results{LeftForceSensor->getReadResult()};
     if(self_results.read_bytes >= 12)
     {
@@ -121,24 +124,6 @@ void BaseController::leftforcesensorCallback( const ros::TimerEvent & e)
                 {
                     Mz=((leftforcesensor_[8]&0x07)<<8)+leftforcesensor_[9];
                 }
-                /* Fx = ((leftforcesensor_[1] & 0x7F) << 4) + (leftforcesensor_[2] >> 4);
-                 Fy = ((leftforcesensor_[2] & 0x07) << 8) + leftforcesensor_[3];
-                 Fz = ((leftforcesensor_[4] & 0x7F) << 4) + (leftforcesensor_[5] >> 4);
-                 Mx = ((leftforcesensor_[5] & 0x07) << 8) + leftforcesensor_[6];
-                 My = ((leftforcesensor_[7] & 0x7F) << 4) + (leftforcesensor_[8] >> 4);
-                 Mz = ((leftforcesensor_[8] & 0x07) << 8) + leftforcesensor_[9];
-                 if (leftforcesensor_[1] & 0x80)
-                     Fx = -Fx;
-                 if (leftforcesensor_[2] & 0x08)
-                     Fy = -Fy;
-                 if (leftforcesensor_[4] & 0x80)
-                     Fz = -Fz;
-                 if (leftforcesensor_[5] & 0x08)
-                     Mx = -Mx;
-                 if (leftforcesensor_[7] & 0x80)
-                     My = -My;
-                 if (leftforcesensor_[8] & 0x08)
-                     Mz = -Mz;*/
                  Leftforcesensor_[0] = FORCE_TRANSFORM_ * Fx;
                  Leftforcesensor_[1] = FORCE_TRANSFORM_ * Fy; 
                  Leftforcesensor_[2] = FORCE_TRANSFORM_ * Fz;
@@ -146,6 +131,7 @@ void BaseController::leftforcesensorCallback( const ros::TimerEvent & e)
                  Leftforcesensor_[4] = MOMENT_TRANSFORM_ * My;
                  Leftforcesensor_[5] = MOMENT_TRANSFORM_ * Mz;
                  std_msgs::Float64MultiArray Leftforcesensor;
+                 Leftforcesensor.data.resize(6);
                  memcpy(Leftforcesensor.data.data(), &Leftforcesensor_[0], 6*sizeof(double));
                  left_forcesensor_pub.publish(Leftforcesensor);
              }
@@ -221,25 +207,6 @@ void BaseController::rightforcesensorCallback( const ros::TimerEvent & e )
                 {
                     Mz=((rightforcesensor_[8]&0x07)<<8)+rightforcesensor_[9];
                 }
-                 /*int Fx,Fy,Fz,Mx,My,Mz;
-                 Fx = ((rightforcesensor_[1] & 0x7F) << 4) + (rightforcesensor_[2] >> 4);
-                 Fy = ((rightforcesensor_[2] & 0x07) << 8) + rightforcesensor_[3];
-                 Fz = ((rightforcesensor_[4] & 0x7F) << 4) + (rightforcesensor_[5] >> 4);
-                 Mx = ((rightforcesensor_[5] & 0x07) << 8) + rightforcesensor_[6];
-                 My = ((rightforcesensor_[7] & 0x7F) << 4) + (rightforcesensor_[8] >> 4);
-                 Mz = ((rightforcesensor_[8] & 0x07) << 8) + rightforcesensor_[9];
-                 if (rightforcesensor_[1] & 0x80)
-                     Fx = -Fx;
-                 if (rightforcesensor_[2] & 0x08)
-                     Fy = -Fy;
-                 if (rightforcesensor_[4] & 0x80)
-                     Fz = -Fz;
-                 if (rightforcesensor_[5] & 0x08)
-                     Mx = -Mx;
-                 if (rightforcesensor_[7] & 0x80)
-                     My = -My;
-                 if (rightforcesensor_[8] & 0x08)
-                     Mz = -Mz;*/
                  Rightforcesensor_[0] = FORCE_TRANSFORM_ * Fx;
                  Rightforcesensor_[1] = FORCE_TRANSFORM_ * Fy; 
                  Rightforcesensor_[2] = FORCE_TRANSFORM_ * Fz;
@@ -247,6 +214,7 @@ void BaseController::rightforcesensorCallback( const ros::TimerEvent & e )
                  Rightforcesensor_[4] = MOMENT_TRANSFORM_ * My;
                  Rightforcesensor_[5] = MOMENT_TRANSFORM_ * Mz;
                  std_msgs::Float64MultiArray Rightforcesensor;
+                 Rightforcesensor.data.resize(6);
                 memcpy(Rightforcesensor.data.data(), &Rightforcesensor_[0], 6*sizeof(double));
                 right_forcesensor_pub.publish(Rightforcesensor);
              }
@@ -735,25 +703,42 @@ void BaseController::sendtimerCallback(const ros::TimerEvent &e)
 //下位机数据接收
 void BaseController::readtimerCallback(const ros::TimerEvent &e)
 {
-        NaviSerialManager::ReadResult self_results{serialManager->getReadResult()};
-        encoder_pre = encoder_after;
-        if(self_results.read_bytes>=COMMAND_SIZE)
+    NaviSerialManager::ReadResult self_results{serialManager->getReadResult()};
+    encoder_pre = encoder_after;
+    if(self_results.read_bytes>=COMMAND_SIZE)
+    {
+        int k = 8;
+        for (int i = 0; i < self_results.read_bytes; i += k)
         {
-            for(int i=0;i<self_results.read_bytes;i+=COMMAND_SIZE)
+            if(self_results.read_result[i] == COMMAND_HEAD)
             {
-                 memcpy(message_, &self_results.read_result[i], COMMAND_SIZE);
-                 parsingMsg();
+                k = 8;
+                memcpy(message_odom_,&self_results.read_result[i],COMMAND_SIZE);
+                parsingMsg();
             }
-            if(right_updated&&left_updated)
+            else if(self_results.read_result[i] == ENCODER_HEAD)
             {
-                ENCODER_.interval=(encoder_after-encoder_pre).toSec();
-                odom_parsing();
-                right_updated=false;
-                left_updated=false;
+                k = 12;
+                memcpy(message_encoder_,&self_results.read_result[i],ENCODER_SIZE);
+                parsingEncoder();
+            }
+            else
+            {
+                ROS_WARN_STREAM(" THE DATA OF ODOM/ENCODER IS ERROR");  
             }
         }
-        else
-        memset(message_, 0, COMMAND_SIZE);
+          
+        if(right_updated&&left_updated)
+        {
+            ENCODER_.interval=(encoder_after-encoder_pre).toSec();
+            odom_parsing();
+            right_updated=false;
+            left_updated=false;
+        }
+    }
+    else
+        memset(message_odom_, 0, COMMAND_SIZE);
+        memset(message_encoder_,0,ENCODER_SIZE);
     //publish the encoder when have.
         if(ENCODER_.interval!=0)
         {
@@ -861,28 +846,28 @@ void BaseController::passCommand(Command user_command)
 //码盘解算
 int BaseController::parsingMsg()
 {
-    if(0x35!=message_[0])
+    if(0x35!=message_odom_[0])
     {
-        memset(message_,0,COMMAND_SIZE);
+        memset(message_odom_,0,COMMAND_SIZE);
         return -1;
     }
     else
     {
-        switch (message_[1])
+        switch (message_odom_[1])
         {
             case 0x31:
                 /*preserved*/
                 break;
             case 0x21:
                 /*poistion of right wheel*/
-                if(0x13==message_[2])
+                if(0x13==message_odom_[2])
                 {
                     //right encodisk parsing
                     char* pchar = (char*)&ENCODER_.right_encoder;
-                    *(pchar+3) = message_[3];
-                    *(pchar+2) = message_[4];
-                    *(pchar+1) = message_[5];
-                    *(pchar+0) = message_[6];
+                    *(pchar+3) = message_odom_[3];
+                    *(pchar+2) = message_odom_[4];
+                    *(pchar+1) = message_odom_[5];
+                    *(pchar+0) = message_odom_[6];
 
                     if (std::abs(ENCODER_.right_encoder) > INT_MAX - 1000)
                         ENCODER_.right_encoder = 0;
@@ -894,13 +879,13 @@ int BaseController::parsingMsg()
                 break;
             case 0x11:
                 /*position of left wheel*/
-                if(0x13==message_[2])
+                if(0x13==message_odom_[2])
                 {
                     char* pchar = (char*)&ENCODER_.left_encoder;
-                    *(pchar+3) = message_[3];
-                    *(pchar+2) = message_[4];
-                    *(pchar+1) = message_[5];
-                    *(pchar+0) = message_[6];
+                    *(pchar+3) = message_odom_[3];
+                    *(pchar+2) = message_odom_[4];
+                    *(pchar+1) = message_odom_[5];
+                    *(pchar+0) = message_odom_[6];
 
                     //按旧小车，向前进时，左轮码盘为负，要乘负一
                     ENCODER_.left_encoder *=-1;
@@ -912,59 +897,16 @@ int BaseController::parsingMsg()
                     encoder_after = ros::Time::now();
                 }
                 break;
-            case 0x02:
-                /*preserved for knife move end*/
-                if(message_[2]==0x32)
-                {
-                    ros::param::set("/visual_servo/knifeMoveEnd",1.0);
-                    ROS_INFO_STREAM("Received knife move end");
-                }
-                break;
-            case 0x13:
-            {
-                if((message_[2]==0x50)&&(message_[3]==0x01))
-                {
-                    battery = ((message_[5]*256 + message_[6])-2350)/5;
-                    if (battery<0)
-                        battery=0;
-                }
-                break;
-            }
-			case 0x20:
-			{
-				//switch
-				if(message_[3]==0x01)
-				{
-					if(message_[4]==0x01)
-					{
-						ros::param::set("/visual_servo/knifeLeftMoveEnd",1.0);
-						knife_left_end=true;
-					}
-					else
-					{
-						ros::param::set("/visual_servo/knifeLeftMoveEnd",0.0);
-						knife_left_end=false;
-					}
-				}
-				else if(message_[3]==0x02)
-				{
-					if(message_[4]==0x01)
-					{
-						ros::param::set("/visual_servo/knifeRightMoveEnd",1.0);
-						knife_right_end=true;
-					}
-					else
-					{
-						ros::param::set("/visual_servo/knifeRightMoveEnd",0.0);
-						knife_right_end=false;
-					}
-				}
-			}
 			default:
                 break;
         }
     }
     return 0;
+}
+
+int BaseController::parsingEncoder()
+{
+
 }
 //里程计计算
 void BaseController::odom_parsing()
@@ -1105,28 +1047,26 @@ void BaseController::odom_publish_timer_callback(const ros::TimerEvent &e)
         broad_caster.sendTransform(odom_trans);
 }
 //多IMU数据发送 后期取消
-void BaseController::MultiImuCallback (const std_msgs::Float64MultiArray & robot_Pitch)
+void BaseController::MultiImuCallback (const sensor_msgs::Imu & robot_Pitch)
 {
-	 tou = robot_Pitch.data[0] * 1000;
-	 zuo = robot_Pitch.data[2] * 1000;
-	 you = robot_Pitch.data[3] * 1000;
-	 tou_1 = robot_Pitch.data[1] * 1000;
+    imu_mutex_.lock();
+	 tf::Quaternion quat;
+     tf::quaternionMsgToTF(robot_Pitch.orientation,quat);
+    double roll, pitch,yaw;
+    tf::Matrix3x3(quat).getRPY(roll,pitch,yaw);
+  
+    tou = pitch* 1000;
+	tou_1 = roll * 1000;
 	//std::cout << tou << std::endl;
-	 imu_mutex_.lock();
-     imu_Pitch[1] = (tou >> 8) & 0xff;
-	 imu_Pitch[2] = tou & 0xff;
-	 imu_Pitch[3] = (zuo >> 8) & 0xff ;
-     imu_Pitch[4] = zuo & 0xff ;
-	 imu_Pitch[5] = (you >> 8) & 0xff;
-	 imu_Pitch[6] = you & 0xff;
-	 //imu_Pitch[7] = (tou_1 >> 8) & 0xff;
-	 //imu_Pitch[8] = tou_1 & 0xff;
-
-	imu_Pitch[1] = -imu_Pitch[1];
-	imu_Pitch[2] = -imu_Pitch[2];
-	 imu_mutex_.unlock();
-	std::cout << imu_Pitch << std::endl;
-
-	
-
+    imu_Pitch[1] = (tou >> 8) & 0xff;
+	imu_Pitch[2] = tou & 0xff;
+	//imu_Pitch[3] = (zuo >> 8) & 0xff ;
+    //imu_Pitch[4] = zuo & 0xff ;
+	//imu_Pitch[5] = (you >> 8) & 0xff;
+	//imu_Pitch[6] = you & 0xff;
+	 imu_Pitch[7] = (tou_1 >> 8) & 0xff;
+	 imu_Pitch[8] = tou_1 & 0xff;
+	//imu_Pitch[1] = -imu_Pitch[1];
+	//imu_Pitch[2] = -imu_Pitch[2];
+	imu_mutex_.unlock();
 }

@@ -6,6 +6,7 @@
 #include "basecontrol/SerialManager.h"
 
 #define COMMAND_SIZE 8
+#define ENCODER_SIZE 12
 #define LOCK_SIZE 10
 #define RESULT_SIZE COMMAND_SIZE*20
 
