@@ -773,62 +773,52 @@ void BaseController::sendCommand( double parameter)
     {
 		case IMU:
 			send_imu_ = !send_imu_;
+        case STOP:
+            break;
+        case GET_ENCODER:
+            serialManager -> send(get_encoder,COMMAND_SIZE);
+            break;
         case GET_POSE:
             //serialManager->send(get_pos,COMMAND_SIZE);
             break;
-        case MOVEFORWARD:
-            if (NaviMode)
-               // serialManager -> send(move_forward,COMMAND_SIZE);
-            
-                ROS_WARN(" ControlMode ");
+        case HIPLOCK:
             break;
-        case MOVEBACK:
-            if (NaviMode) 
-               // serialManager -> send(move_back,COMMAND_SIZE);
-            
-                ROS_WARN(" ControlMode ");
+        case HIPCUT:
             break;
-        case TURNLEFT:
-            if (NaviMode) 
-               // serialManager -> send(turn_left,COMMAND_SIZE);
-            
-                ROS_WARN(" ControlMode ");
+        case ANKLELOCK:
+            serialManager -> send(left_ankle_lock,COMMAND_SIZE);
+            usleep(5000);
+            serialManager -> send(right_ankle_lock,COMMAND_SIZE);
             break;
-        case TURNRIGHT:
-            if (NaviMode) 
-              //  serialManager -> send(turn_right,COMMAND_SIZE);
-            
-                ROS_WARN(" ControlMode ");
+        case ANKLECUT:
+            //serialManager -> send(left_ankle_cut,COMMAND_SIZE);
+			//std::cout << "anklecut 1" << std::endl;	
+            usleep(500000);
+            serialManager -> send(clear_message,COMMAND_SIZE);
             break;
-        case STOP:
-            serialManager -> send(stop_smooth,COMMAND_SIZE);
-            break;
-        case RESET:
-			std::cout<<"reset here"<<std::endl;
-            serialManager -> send(joint_reset,COMMAND_SIZE);
-            break;
-        case INIT:
-            serialManager -> send(joint_init,COMMAND_SIZE);
-            break;
-        case SQUAT:
-            serialManager -> send(squat,COMMAND_SIZE);
-			std::cout << "squat 1" << std::endl;
-            break;
-        case STAND:
-            serialManager -> send(stand,COMMAND_SIZE);
-			std::cout << "stand 1" << std::endl;
+        case KNEELOCK:
             break;
         case KNEECUT:
             serialManager -> send(left_knee_cut,COMMAND_SIZE);
 			std::cout << "kneecut 1" << std::endl;
             usleep(500000);
             serialManager -> send(right_knee_cut,COMMAND_SIZE);
-			break;
-        case ANKLECUT://clear message
-            //serialManager -> send(left_ankle_cut,COMMAND_SIZE);
-			//std::cout << "anklecut 1" << std::endl;	
-            usleep(500000);
-            serialManager -> send(clear_message,COMMAND_SIZE);
+            break;
+        case RESET:
+			std::cout<<"reset here"<<std::endl;
+            serialManager -> send(joint_reset,COMMAND_SIZE);
+            break;
+        case CLEARRESET:
+            serialManager -> send(clear_reset,COMMAND_SIZE);
+            break;
+        case INIT:
+            serialManager -> send(joint_init,COMMAND_SIZE);
+            break;
+        case SQUAT:
+            serialManager -> send(squat,COMMAND_SIZE);
+            break;
+        case STAND:
+            serialManager -> send(stand,COMMAND_SIZE);
             break;
         default:
             break;
